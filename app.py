@@ -9,7 +9,7 @@ def load_compressed_pickle(filepath):
         return pickle.load(f)
 
 # Load the data
-movies_df = pickle.load(open('movies_df.pkl', 'rb'))
+movies_df = pickle.load(open('new_movies_df.pkl', 'rb'))
 movies = pd.DataFrame(movies_df)
 similarity = load_compressed_pickle('similarity.pkl.gz')
 
