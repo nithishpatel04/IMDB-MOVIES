@@ -3,15 +3,24 @@ import pickle
 import pandas as pd
 import requests
 import gzip
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 def load_compressed_pickle(filepath):
     with gzip.open(filepath, 'rb') as f:
         return pickle.load(f)
 
-# Load the data from CSV
+# Load the data from CSV and add movie_id
 movies_df = pd.read_csv('Movies_IMDB.csv')
+movies_df['movie_id'] = range(len(movies_df))
 movies = pd.DataFrame(movies_df)
-similarity = load_compressed_pickle('similarity.pkl.gz')
+
+# Vectorize descriptions
+vectorizer = TfidfVectorizer(stop_words='english')
+vectors = vectorizer.fit_transform(movies_df['description'])
+
+# Compute similarity
+similarity = cosine_similarity(vectors)
 
 def fetch_poster(movie_id):
     url = 'https://api.themoviedb.org/3/movie/{}?api_key=c4b3e35657228509f910bfe621114879&append_to_response=videos,images'.format(movie_id)
