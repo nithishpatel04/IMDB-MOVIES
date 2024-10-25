@@ -25,16 +25,21 @@ similarity = cosine_similarity(vectors)
 def fetch_poster(movie_id):
     url = 'https://api.themoviedb.org/3/movie/{}?api_key=c4b3e35657228509f910bfe621114879&append_to_response=videos,images'.format(movie_id)
     data = requests.get(url).json()
-    return "https://image.tmdb.org/t/p/original/" + data['poster_path']
+    if 'poster_path' in data:
+        return "https://image.tmdb.org/t/p/original/" + data['poster_path']
+    else:
+        return "https://via.placeholder.com/150"  # Placeholder image if poster not available
 
 def release(movie_id):
     url = 'https://api.themoviedb.org/3/movie/{}?api_key=c4b3e35657228509f910bfe621114879'.format(movie_id)
-    return requests.get(url).json()['release_date']
+    data = requests.get(url).json()
+    return data.get('release_date', 'N/A')  # Return 'N/A' if release date is not available
 
 def recommend(movie):
     movie_index = movies[movies['movie_name'] == movie].index[0]
     distances = similarity[movie_index]
     movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
+    
     recommend_movies_name = []
     recommend_movies_poster = []
     recommend_movies_release = []
@@ -42,6 +47,7 @@ def recommend(movie):
     recommend_movies_Genre = []
     recommend_movies_Director = []
     recommend_movies_Stars = []
+    
     for i in movie_list:
         movie_id = movies.iloc[i[0]].movie_id
         recommend_movies_poster.append(fetch_poster(movie_id))
@@ -51,6 +57,7 @@ def recommend(movie):
         recommend_movies_Genre.append(movies.iloc[i[0]].genre)
         recommend_movies_Director.append(movies.iloc[i[0]].directors)
         recommend_movies_Stars.append(movies.iloc[i[0]].stars)
+    
     return recommend_movies_poster, recommend_movies_name, recommend_movies_Genre, recommend_movies_rating, recommend_movies_release, recommend_movies_Director, recommend_movies_Stars
 
 # Streamlit app
