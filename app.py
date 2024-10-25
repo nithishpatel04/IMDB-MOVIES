@@ -8,8 +8,8 @@ def load_compressed_pickle(filepath):
     with gzip.open(filepath, 'rb') as f:
         return pickle.load(f)
 
-# Load the data
-movies_df = pickle.load(open('new_movies_df.pkl', 'rb'))
+# Load the data from CSV
+movies_df = pd.read_csv('Movies_IMDB.csv')
 movies = pd.DataFrame(movies_df)
 similarity = load_compressed_pickle('similarity.pkl.gz')
 
