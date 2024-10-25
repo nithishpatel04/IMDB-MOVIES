@@ -6,24 +6,17 @@ import gzip
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-def load_compressed_pickle(filepath):
-    with gzip.open(filepath, 'rb') as f:
-        return pickle.load(f)
-
 # Load the data from CSV and add movie_id
 movies_df = pd.read_csv('Movies_IMDB.csv')
 movies_df['movie_id'] = range(len(movies_df))
 movies = pd.DataFrame(movies_df)
 
-# Vectorize descriptions
-vectorizer = TfidfVectorizer(stop_words='english')
-vectors = vectorizer.fit_transform(movies_df['description'])
-
-# Compute similarity
-similarity = cosine_similarity(vectors)
+# Load the precomputed similarity matrix
+with gzip.open('similarity.pkl.gz', 'rb') as f:
+    similarity = pickle.load(f)
 
 def fetch_poster(movie_id):
-    url = 'https://api.themoviedb.org/3/movie/{}?api_key=c4b3e35657228509f910bfe621114879&append_to_response=videos,images'.format(movie_id)
+    url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key=4b535bb4ed32ad84c6832cfc9f1a6a8a&append_to_response=videos,images'
     data = requests.get(url).json()
     if 'poster_path' in data:
         return "https://image.tmdb.org/t/p/original/" + data['poster_path']
@@ -31,9 +24,9 @@ def fetch_poster(movie_id):
         return "https://via.placeholder.com/150"  # Placeholder image if poster not available
 
 def release(movie_id):
-    url = 'https://api.themoviedb.org/3/movie/{}?api_key=c4b3e35657228509f910bfe621114879'.format(movie_id)
+    url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key=4b535bb4ed32ad84c6832cfc9f1a6a8a'
     data = requests.get(url).json()
-    return data.get('release_date', 'N/A')  # Return 'N/A' if release date is not available
+    return data.get('release_date', 'N/A')
 
 def recommend(movie):
     movie_index = movies[movies['movie_name'] == movie].index[0]
