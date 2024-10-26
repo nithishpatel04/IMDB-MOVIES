@@ -3,29 +3,8 @@ import requests
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
-import os
 
-# Set the path to your background image
-background_image_path = "desktop-wallpaper-film-posters-collage-movies-resolution.jpg"  # Replace with your local JPG file path
-
-def set_background_image(image_path):
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: url({image_path});
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            background-position: center;
-            opacity: 0.9;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-set_background_image(background_image_path)
+# Remove background image setting
 
 API_KEY = 'd4a267e87212b1218509323158cfe737'  # Your TMDB API key
 
@@ -68,9 +47,10 @@ def get_index_from_movie_name(movie_name):
     return df[df.movie_name == movie_name]["index"].values[0]
 
 st.title(":red[Movie Recommendation System]")
-st.write("Enter a movie name to find similar movies:")
+st.write("Select a movie to find similar movies:")
 
-movie_user_likes = st.text_input("Movie Name")
+# Use a selectbox for the movie selection
+movie_user_likes = st.selectbox("Movie Name", df['movie_name'].values)
 
 if st.button("Find Similar Movies"):
     if movie_user_likes:
@@ -97,8 +77,4 @@ if st.button("Find Similar Movies"):
         except IndexError:
             st.write("Movie not found in the database. Please check the name.")
     else:
-        st.write("Please enter a movie name.")
-
-# Remove the dataset display
-# st.write("Dataset:")
-# st.dataframe(df[['movie_name', 'combined_features']])
+        st.write("Please select a movie.")
