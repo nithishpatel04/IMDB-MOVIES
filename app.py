@@ -1,73 +1,104 @@
 import streamlit as st
-import pickle
-import pandas as pd
 import requests
-import gzip
-from sklearn.feature_extraction.text import TfidfVectorizer
+import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
+import pickle
+import os
 
-def load_compressed_pickle(filepath):
-    with gzip.open(filepath, 'rb') as f:
-        return pickle.load(f)
+# Set the path to your background image
+background_image_path = "desktop-wallpaper-film-posters-collage-movies-resolution.jpg"  # Replace with your local JPG file path
 
-# Load the data from CSV and add movie_id
-movies_df = pd.read_csv('Movies_IMDB.csv')
-movies_df['movie_id'] = range(len(movies_df))
-movies = pd.DataFrame(movies_df)
+def set_background_image(image_path):
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url({image_path});
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-position: center;
+            opacity: 0.9;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-# Vectorize descriptions
-vectorizer = TfidfVectorizer(stop_words='english')
-vectors = vectorizer.fit_transform(movies_df['description'])
+set_background_image(background_image_path)
 
-# Compute similarity
-similarity = cosine_similarity(vectors)
+API_KEY = 'd4a267e87212b1218509323158cfe737'  # Your TMDB API key
 
-def fetch_poster(movie_id):
-    url = 'https://api.themoviedb.org/3/movie/{}?api_key=c4b3e35657228509f910bfe621114879&append_to_response=videos,images'.format(movie_id)
-    data = requests.get(url).json()
-    return "https://image.tmdb.org/t/p/original/" + data['poster_path']
+@st.cache_data
+def get_movie_poster(movie_name):
+    search_url = f"https://api.themoviedb.org/3/search/movie?api_key={API_KEY}&query={movie_name}"
+    response = requests.get(search_url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        if data['results']:
+            poster_path = data['results'][0]['poster_path']
+            if poster_path:
+                poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}"
+                return poster_url
+    return "https://via.placeholder.com/150"  # Default placeholder if not found
 
-def release(movie_id):
-    url = 'https://api.themoviedb.org/3/movie/{}?api_key=c4b3e35657228509f910bfe621114879'.format(movie_id)
-    return requests.get(url).json()['release_date']
+@st.cache_data
+def load_data():
+    return pickle.load(open('movie_data.pkl', 'rb'))
 
-def recommend(movie):
-    movie_index = movies[movies['movie_name'] == movie].index[0]
-    distances = similarity[movie_index]
-    movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
-    recommend_movies_name = []
-    recommend_movies_poster = []
-    recommend_movies_release = []
-    recommend_movies_rating = []
-    recommend_movies_Genre = []
-    recommend_movies_Director = []
-    recommend_movies_Stars = []
-    for i in movie_list:
-        movie_id = movies.iloc[i[0]].movie_id
-        recommend_movies_poster.append(fetch_poster(movie_id))
-        recommend_movies_name.append(movies.iloc[i[0]].movie_name)
-        recommend_movies_release.append(release(movie_id))
-        recommend_movies_rating.append(movies.iloc[i[0]].rating)
-        recommend_movies_Genre.append(movies.iloc[i[0]].genre)
-        recommend_movies_Director.append(movies.iloc[i[0]].directors)
-        recommend_movies_Stars.append(movies.iloc[i[0]].stars)
-    return recommend_movies_poster, recommend_movies_name, recommend_movies_Genre, recommend_movies_rating, recommend_movies_release, recommend_movies_Director, recommend_movies_Stars
+@st.cache_data
+def load_tfidf():
+    return pickle.load(open('tfidf_matrix.pkl', 'rb'))
 
-# Streamlit app
-st.title('Movie Recommender System')
-option = st.selectbox('Select your Movie:', movies['movie_name'].values)
-if st.button('Recommend'):
-    rec_poster, rec_name, rec_genre, rec_rating, rec_release, rec_director, rec_stars = recommend(option)
-    cols = st.columns(5)
-    tabs = st.tabs(['Movie1', 'Movie2', 'Movie3', 'Movie4', 'Movie5'])
-    for i, col in enumerate(cols):
-        with col:
-            st.image(rec_poster[i])
-            st.write(f'<b style="color:yellow">{rec_name[i]}</b>', unsafe_allow_html=True)
-    for i, tab in enumerate(tabs):
-        with tab:
-            st.write(f'<b style="color:red">Rating:</b> <b style="color:yellow">{rec_rating[i]}</b>', unsafe_allow_html=True)
-            st.write(f'<b style="color:red">Genre:</b> <b style="color:yellow">{rec_genre[i]}</b>', unsafe_allow_html=True)
-            st.write(f'<b style="color:red">Release:</b> <b style="color:yellow">{rec_release[i]}</b>', unsafe_allow_html=True)
-            st.write(f'<b style="color:red">Director:</b> <b style="color:yellow">{rec_director[i]}</b>', unsafe_allow_html=True)
-            st.write(f'<b style="color:red">Stars:</b> <b style="color:yellow">{rec_stars[i]}</b>', unsafe_allow_html=True)
+@st.cache_data
+def load_vectorizer():
+    return pickle.load(open('tfidf_vectorizer.pkl', 'rb'))
+
+df = load_data()
+tfidf_matrix = load_tfidf()
+tf = load_vectorizer()
+
+cosine_similar = cosine_similarity(tfidf_matrix, tfidf_matrix)
+
+def get_movie_name_from_index(index):
+    return df[df.index == index]["movie_name"].values[0]
+
+def get_index_from_movie_name(movie_name):
+    return df[df.movie_name == movie_name]["index"].values[0]
+
+st.title(":red[Movie Recommendation System]")
+st.write("Enter a movie name to find similar movies:")
+
+movie_user_likes = st.text_input("Movie Name")
+
+if st.button("Find Similar Movies"):
+    if movie_user_likes:
+        poster_url = get_movie_poster(movie_user_likes)
+        if poster_url:
+            st.image(poster_url, width=200)
+        else:
+            st.write("Poster not found.")
+
+        try:
+            movie_index = get_index_from_movie_name(movie_user_likes)
+            similar_movies = list(enumerate(cosine_similar[movie_index]))
+            sorted_similar_movies = sorted(similar_movies, key=lambda x: x[1], reverse=True)[1:]
+
+            st.write(f"Top 10 similar movies to **{movie_user_likes}** are:")
+            cols = st.columns(5)  # Create five columns for layout
+            for i, element in enumerate(sorted_similar_movies):
+                if i >= 10:
+                    break
+                with cols[i % 5]:  # Cycle through the columns
+                    movie_name = get_movie_name_from_index(element[0])
+                    st.write(f"<b style='color: yellow'>{movie_name}</b>", unsafe_allow_html=True)
+                    st.image(get_movie_poster(movie_name), width=100)  # Fetch and show poster for each movie
+        except IndexError:
+            st.write("Movie not found in the database. Please check the name.")
+    else:
+        st.write("Please enter a movie name.")
+
+# Remove the dataset display
+# st.write("Dataset:")
+# st.dataframe(df[['movie_name', 'combined_features']])
